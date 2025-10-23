@@ -29,7 +29,9 @@ export const PreviewMessage = ({
         <div className="flex flex-col gap-2 w-full">
           {message.content && (
             <div className="flex flex-col gap-4">
-              <Markdown>{message.content as string}</Markdown>
+              <Markdown>
+                {(message.content as string).replace("[VOICE_MODE]", "").trim()}
+              </Markdown>
             </div>
           )}
 
@@ -54,12 +56,14 @@ export const PreviewMessage = ({
 
           {message.experimental_attachments && (
             <div className="flex flex-row gap-2">
-              {message.experimental_attachments.map((attachment) => (
-                <PreviewAttachment
-                  key={attachment.url}
-                  attachment={attachment}
-                />
-              ))}
+              {message.experimental_attachments
+                .filter((attachment) => !attachment.contentType?.startsWith("audio/"))
+                .map((attachment) => (
+                  <PreviewAttachment
+                    key={attachment.url}
+                    attachment={attachment}
+                  />
+                ))}
             </div>
           )}
         </div>

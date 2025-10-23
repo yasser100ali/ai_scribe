@@ -1,9 +1,12 @@
 import json
 import os
 from typing import Optional, Tuple, List, Dict, Any
-from openai import OpenAI
 from dotenv import load_dotenv
 
+# Load environment variables immediately at module import time
+load_dotenv()
+
+from openai import OpenAI
 
 
 def _load_patient_records() -> Dict[str, Any]:
@@ -104,7 +107,7 @@ def get_patient_info(
 # ----------------
 # TOOL 3. Rag search. This tool is used when the agent wants to find a general piece of info in the client records. ex: "Find me patients with mental health issues" -> becomes increasingly important as you scale up the patient records database. 
 # Vector already initalized in testing_rag and file was already uploaded there as well. 
-load_dotenv()
+
 vectorStoreID = os.getenv("VECTOR_STORE_ID")
 if not vectorStoreID:
     vectorStoreID = "vs_68f972091abc8191ac6168a7566427a1" # generated in testing_rag.py! 

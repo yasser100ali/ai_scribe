@@ -855,3 +855,40 @@ export const CheckCirclFillIcon = ({ size = 16 }: { size?: number }) => {
     </svg>
   );
 };
+
+export const MicrophoneIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: "currentcolor" }}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M8 0.5C6.61929 0.5 5.5 1.61929 5.5 3V8C5.5 9.38071 6.61929 10.5 8 10.5C9.38071 10.5 10.5 9.38071 10.5 8V3C10.5 1.61929 9.38071 0.5 8 0.5ZM4 3C4 0.790861 5.79086 -1 8 -1C10.2091 -1 12 0.790861 12 3V8C12 10.2091 10.2091 12 8 12C5.79086 12 4 10.2091 4 8V3ZM2.5 7.25V8C2.5 11.0376 4.96243 13.5 8 13.5C11.0376 13.5 13.5 11.0376 13.5 8V7.25V6.5H15V7.25V8C15 11.7453 12.0796 14.8196 8.43934 15.2101C8.48166 15.3003 8.50829 15.3972 8.52423 15.5H11.25H12V17H11.25H8H4.75H4V15.5H4.75H7.47577C7.49171 15.3972 7.51834 15.3003 7.56066 15.2101C3.92038 14.8196 1 11.7453 1 8V7.25V6.5H2.5V7.25Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+export const MicrophoneOffIcon = ({ size = 16 }: { size?: number }) => (
+  <svg
+    height={size}
+    strokeLinejoin="round"
+    viewBox="0 0 16 16"
+    width={size}
+    style={{ color: "currentcolor" }}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M1.5 1.5L14.5 14.5M5.5 3C5.5 1.61929 6.61929 0.5 8 0.5C9.38071 0.5 10.5 1.61929 10.5 3V8C10.5 8.5 10.3 9 10 9.3M4 8V3C4 2.5 4.2 2 4.5 1.7M8 12C5.79086 12 4 10.2091 4 8M8 13.5C4.96243 13.5 2.5 11.0376 2.5 8V7.25M13.5 8V7.25V6.5H15V7.25V8C15 11.7453 12.0796 14.8196 8.43934 15.2101C8.48166 15.3003 8.50829 15.3972 8.52423 15.5H11.25H12V17H11.25H8H4.75H4V15.5H4.75H7.47577C7.49171 15.3972 7.51834 15.3003 7.56066 15.2101C6.5 15 5.5 14.5 4.7 13.8"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      fill="none"
+    />
+  </svg>
+);

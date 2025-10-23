@@ -7,6 +7,7 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useState,
   type Dispatch,
   type SetStateAction,
 } from "react";
@@ -14,8 +15,9 @@ import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 
 import { cn, sanitizeUIMessages } from "@/lib/utils";
+import { useVoiceRecording } from "@/hooks/use-voice-recording";
 
-import { ArrowUpIcon, StopIcon } from "./icons";
+import { ArrowUpIcon, StopIcon, MicrophoneIcon } from "./icons";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
@@ -83,6 +85,17 @@ export function MultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const processingRef = useRef(false);
+  const { 
+    isRecording, 
+    isPlaying, 
+    audioBlob, 
+    startRecording, 
+    stopRecording, 
+    playAudio, 
+    clearRecording 
+  } = useVoiceRecording();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -131,6 +144,92 @@ export function MultimodalInput({
       textareaRef.current?.focus();
     }
   }, [handleSubmit, setLocalStorageInput, width]);
+
+  const handleVoiceToggle = useCallback(async () => {
+    if (isRecording) {
+      // Stop recording and send audio
+      await stopRecording();
+    } else {
+      // Start recording
+      processingRef.current = false; // Reset processing flag
+      setIsVoiceMode(true);
+      await startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
+  // Handle audio blob when recording stops - transcribe it first
+  useEffect(() => {
+    if (audioBlob && !isRecording && !processingRef.current) {
+      processingRef.current = true;
+      
+      const transcribeAndSend = async () => {
+        try {
+          // Convert blob to FormData for transcription
+          const formData = new FormData();
+          formData.append('file', audioBlob, 'audio.webm');
+
+          // Transcribe audio using backend API
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error('Transcription failed');
+          }
+
+          const data = await response.json();
+          const transcribedText = data.text;
+
+          // Send transcribed text as a regular message with voice mode marker
+          if (transcribedText) {
+            setInput(transcribedText);
+            await append({
+              role: "user",
+              content: `[VOICE_MODE]${transcribedText}`,
+            });
+          }
+
+          clearRecording();
+          processingRef.current = false;
+          // Don't set isVoiceMode to false yet - wait for response
+        } catch (error) {
+          console.error('Error transcribing audio:', error);
+          toast.error('Failed to transcribe audio. Please try again.');
+          clearRecording();
+          setIsVoiceMode(false);
+          processingRef.current = false;
+        }
+      };
+
+      transcribeAndSend();
+    }
+  }, [audioBlob, isRecording, append, clearRecording, setInput]);
+
+  // Play audio responses from AI (only if voice mode was used)
+  useEffect(() => {
+    if (!isVoiceMode) return; // Only play audio if user used voice input
+    
+    const lastMessage = messages[messages.length - 1];
+    if (
+      lastMessage?.role === "assistant" &&
+      lastMessage.experimental_attachments &&
+      lastMessage.experimental_attachments.length > 0
+    ) {
+      const audioAttachment = lastMessage.experimental_attachments.find(
+        (att: any) => att.contentType?.startsWith("audio/")
+      );
+      if (audioAttachment && audioAttachment.url) {
+        // Extract base64 data and play
+        const base64Data = audioAttachment.url.split(',')[1];
+        const format = audioAttachment.contentType?.split('/')[1] || 'wav';
+        playAudio(base64Data, format);
+        
+        // Reset voice mode after playing
+        setIsVoiceMode(false);
+      }
+    }
+  }, [messages, playAudio, isVoiceMode, setIsVoiceMode]);
 
   const actions = suggestedActions || defaultSuggestedActions;
 
@@ -192,29 +291,84 @@ export function MultimodalInput({
           }}
         />
 
-        {isLoading ? (
-          <Button
-            className="rounded-full p-2 h-fit absolute bottom-3 right-3 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-            onClick={(event) => {
-              event.preventDefault();
-              stop();
-              setMessages((messages) => sanitizeUIMessages(messages));
-            }}
+        {/* Recording indicator */}
+        {isRecording && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-3 left-3 flex items-center gap-2 bg-red-500/20 text-red-500 px-3 py-1.5 rounded-full text-xs font-medium"
           >
-            <StopIcon size={16} />
-          </Button>
-        ) : (
-          <Button
-            className="rounded-full p-2 h-fit absolute bottom-3 right-3 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:opacity-30"
-            onClick={(event) => {
-              event.preventDefault();
-              submitForm();
-            }}
-            disabled={input.length === 0}
-          >
-            <ArrowUpIcon size={16} />
-          </Button>
+            <motion.span
+              className="w-2 h-2 bg-red-500 rounded-full"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
+            Recording...
+          </motion.div>
         )}
+
+        {/* Playing indicator */}
+        {isPlaying && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-3 left-3 flex items-center gap-2 bg-blue-500/20 text-blue-500 px-3 py-1.5 rounded-full text-xs font-medium"
+          >
+            <motion.span
+              className="w-2 h-2 bg-blue-500 rounded-full"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.8, repeat: Infinity }}
+            />
+            Playing...
+          </motion.div>
+        )}
+
+        {/* Button group */}
+        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+          {/* Microphone button */}
+          {!isLoading && (
+            <Button
+              className={cn(
+                "rounded-full p-2 h-fit shadow-md transition-all",
+                isRecording 
+                  ? "bg-red-500 hover:bg-red-600 text-white animate-pulse" 
+                  : "bg-secondary hover:bg-secondary/80 text-secondary-foreground"
+              )}
+              onClick={(event) => {
+                event.preventDefault();
+                handleVoiceToggle();
+              }}
+              title={isRecording ? "Stop recording" : "Start voice recording"}
+            >
+              <MicrophoneIcon size={16} />
+            </Button>
+          )}
+
+          {/* Send / Stop button */}
+          {isLoading ? (
+            <Button
+              className="rounded-full p-2 h-fit bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+              onClick={(event) => {
+                event.preventDefault();
+                stop();
+                setMessages((messages) => sanitizeUIMessages(messages));
+              }}
+            >
+              <StopIcon size={16} />
+            </Button>
+          ) : (
+            <Button
+              className="rounded-full p-2 h-fit bg-primary hover:bg-primary/90 text-primary-foreground shadow-md disabled:opacity-30"
+              onClick={(event) => {
+                event.preventDefault();
+                submitForm();
+              }}
+              disabled={input.length === 0}
+            >
+              <ArrowUpIcon size={16} />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

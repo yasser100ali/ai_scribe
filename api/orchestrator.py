@@ -1,7 +1,6 @@
 import os
 import json
-from re import search
-from typing import List, Dict
+from typing import List, Dict, Any
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -142,9 +141,136 @@ def execute_function_call(function_name: str, arguments: str) -> str:
     return json.dumps({"error": f"Unknown function: {function_name}"})
 
 
+def _flatten_message_content(content: Any) -> str:
+    """Normalize chat.completions content into a plain string."""
+    if isinstance(content, str):
+        return content
+
+    text_parts: List[str] = []
+
+    if isinstance(content, list):
+        for part in content:
+            if isinstance(part, str):
+                text_parts.append(part)
+            elif isinstance(part, dict):
+                text = part.get("text") or part.get("content")
+                if text:
+                    text_parts.append(text)
+            else:
+                text = getattr(part, "text", None) or getattr(part, "content", None)
+                if text:
+                    text_parts.append(text)
+
+    return "".join(text_parts)
+
+
+def _build_audio_attachment(audio_obj: Any, default_format: str = "wav") -> Dict[str, str]:
+    """Create a Vercel AI compatible attachment payload from audio metadata."""
+    if not audio_obj:
+        return {}
+
+    audio_data = getattr(audio_obj, "data", None)
+    audio_format = getattr(audio_obj, "format", None) or default_format
+
+    if isinstance(audio_obj, dict):
+        audio_data = audio_obj.get("data", audio_data)
+        audio_format = audio_obj.get("format", audio_format)
+
+    if not audio_data:
+        return {}
+
+    data_url = f"data:audio/{audio_format};base64,{audio_data}"
+
+    return {
+        "type": "audio",
+        "contentType": f"audio/{audio_format}",
+        "url": data_url,
+        "name": f"assistant-response.{audio_format}",
+    }
+
+
+def stream_text_with_audio(messages: List[dict], protocol: str = "data"):
+    """
+    Handle audio output using Chat Completions API with audio modalities.
+    
+    Args:
+        messages: List of conversation messages (text only, already transcribed)
+        protocol: Protocol type (default "data")
+        
+    Yields:
+        Formatted response chunks for streaming
+    """
+    # Convert messages to simple Chat Completions format
+    chat_messages = []
+    
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+            
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        
+        if content:
+            chat_messages.append({
+                "role": role,
+                "content": content
+            })
+    
+    try:
+        # Use Chat Completions API with audio modalities
+        response = client.chat.completions.create(
+            model="gpt-4o-audio-preview",
+            modalities=["text", "audio"],
+            audio={"voice": "alloy", "format": "wav"},
+            messages=chat_messages,
+            stream=False  # Audio doesn't support streaming yet
+        )
+        
+        # Extract text response
+        if response.choices and response.choices[0].message.content is not None:
+            text_content = _flatten_message_content(response.choices[0].message.content)
+            if text_content:
+                yield f'0:{json.dumps(text_content)}\n'
+
+        # Extract audio response if available
+        if (response.choices and 
+            hasattr(response.choices[0].message, 'audio') and 
+            response.choices[0].message.audio):
+            attachment_data = _build_audio_attachment(response.choices[0].message.audio)
+            if attachment_data:
+                yield f'8:{json.dumps(attachment_data)}\n'
+        else:
+            # Fallback if audio stored differently (dicts instead of attrs)
+            choice_message = response.choices[0].message
+            audio_obj = None
+            if isinstance(choice_message, dict):
+                audio_obj = choice_message.get("audio")
+            if audio_obj:
+                attachment_data = _build_audio_attachment(audio_obj)
+                if attachment_data:
+                    yield f'8:{json.dumps(attachment_data)}\n'
+        
+        # Send completion metadata
+        usage = response.usage if hasattr(response, 'usage') else None
+        prompt_tokens = usage.prompt_tokens if usage else None
+        completion_tokens = usage.completion_tokens if usage else None
+        
+        tail = {
+            "finishReason": "stop",
+            "usage": {"promptTokens": prompt_tokens, "completionTokens": completion_tokens},
+            "isContinued": False,
+        }
+        yield f'e:{json.dumps(tail)}\n'
+        
+    except Exception as e:
+        print(f"Error in audio processing: {e}")
+        error_payload = {"finishReason": "error", "message": str(e)}
+        yield f'e:{json.dumps(error_payload)}\n'
+
+
 def stream_text(messages: List[dict], protocol: str = "data"):
     """
-    Stream text responses from OpenAI with function calling support.
+    Stream text responses from OpenAI with function calling and audio support.
     
     Args:
         messages: List of conversation messages
@@ -153,7 +279,30 @@ def stream_text(messages: List[dict], protocol: str = "data"):
     Yields:
         Formatted response chunks for streaming
     """
-
+    
+    # Check if voice mode is active (look for [VOICE_MODE] marker in last user message)
+    voice_mode = False
+    cleaned_messages = []
+    
+    for msg in messages:
+        if isinstance(msg, dict):
+            content = msg.get("content", "")
+            if isinstance(content, str) and content.startswith("[VOICE_MODE]"):
+                voice_mode = True
+                # Remove the marker and keep the text
+                cleaned_content = content.replace("[VOICE_MODE]", "").strip()
+                cleaned_msg = msg.copy()
+                cleaned_msg["content"] = cleaned_content
+                cleaned_messages.append(cleaned_msg)
+            else:
+                cleaned_messages.append(msg)
+        else:
+            cleaned_messages.append(msg)
+    
+    # If voice mode is active, use audio generation
+    if voice_mode:
+        yield from stream_text_with_audio(cleaned_messages, protocol)
+        return
     
     model_name = "gpt-4.1-mini"
     input_list = messages.copy()
@@ -222,4 +371,3 @@ def stream_text(messages: List[dict], protocol: str = "data"):
             "isContinued": False,
         }
         yield f'e:{json.dumps(tail)}\n'
-
