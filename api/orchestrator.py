@@ -237,30 +237,8 @@ def stream_text_with_audio(messages: List[dict], protocol: str = "data"):
             if text_content:
                 yield f'0:{json.dumps(text_content)}\n'
         
-        # Now generate audio from the text response using the new TTS API
-        if text_content:
-            audio_response = client.audio.speech.create(
-                model="gpt-4o-mini-tts",
-                voice="alloy",
-                input=text_content,
-                instructions="Speak in a professional and clear tone suitable for healthcare providers.",
-                response_format="wav"
-            )
-            
-            # Convert audio response to base64
-            audio_bytes = audio_response.content
-            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
-            
-            # Create audio attachment
-            attachment_data = {
-                "type": "audio",
-                "contentType": "audio/wav",
-                "url": f"data:audio/wav;base64,{audio_base64}",
-                "name": "assistant-response.wav",
-            }
-            yield f'8:{json.dumps(attachment_data)}\n'
-        
         # Send completion metadata
+        # Audio will be generated separately via /api/tts endpoint
         usage = text_response.usage if hasattr(text_response, 'usage') else None
         prompt_tokens = usage.prompt_tokens if usage else None
         completion_tokens = usage.completion_tokens if usage else None
@@ -270,6 +248,7 @@ def stream_text_with_audio(messages: List[dict], protocol: str = "data"):
             "usage": {"promptTokens": prompt_tokens, "completionTokens": completion_tokens},
             "isContinued": False,
         }
+        
         yield f'e:{json.dumps(tail)}\n'
         
     except Exception as e:

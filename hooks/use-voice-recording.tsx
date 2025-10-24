@@ -83,6 +83,9 @@ export function useVoiceRecording(): VoiceRecordingHook {
   }, [isRecording]);
 
   const playAudio = useCallback(async (audioData: string, format: string = 'wav') => {
+    console.log('playAudio called with format:', format);
+    console.log('Audio data length:', audioData?.length);
+    
     try {
       // Stop any currently playing audio
       if (audioElementRef.current) {
@@ -91,6 +94,7 @@ export function useVoiceRecording(): VoiceRecordingHook {
       }
 
       // Decode base64 audio data
+      console.log('Decoding base64 audio data...');
       const binaryString = atob(audioData);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
@@ -98,23 +102,33 @@ export function useVoiceRecording(): VoiceRecordingHook {
       }
       
       const blob = new Blob([bytes], { type: `audio/${format}` });
+      console.log('Created audio blob:', blob.size, 'bytes');
       const url = URL.createObjectURL(blob);
+      console.log('Created object URL:', url);
       
       const audio = new Audio(url);
       audioElementRef.current = audio;
 
-      audio.onplay = () => setIsPlaying(true);
+      audio.onplay = () => {
+        console.log('Audio started playing');
+        setIsPlaying(true);
+      };
       audio.onended = () => {
+        console.log('Audio finished playing');
         setIsPlaying(false);
         URL.revokeObjectURL(url);
       };
-      audio.onerror = () => {
+      audio.onerror = (e) => {
+        console.error('Audio error event:', e);
+        console.error('Audio error details:', audio.error);
         setIsPlaying(false);
         URL.revokeObjectURL(url);
         toast.error("Failed to play audio");
       };
 
+      console.log('Attempting to play audio...');
       await audio.play();
+      console.log('Audio play() succeeded');
     } catch (error) {
       console.error("Error playing audio:", error);
       toast.error("Failed to play audio response");

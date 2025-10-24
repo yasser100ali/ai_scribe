@@ -211,23 +211,48 @@ export function MultimodalInput({
     if (!isVoiceMode) return; // Only play audio if user used voice input
     
     const lastMessage = messages[messages.length - 1];
-    if (
-      lastMessage?.role === "assistant" &&
-      lastMessage.experimental_attachments &&
-      lastMessage.experimental_attachments.length > 0
-    ) {
-      const audioAttachment = lastMessage.experimental_attachments.find(
-        (att: any) => att.contentType?.startsWith("audio/")
-      );
-      if (audioAttachment && audioAttachment.url) {
-        // Extract base64 data and play
-        const base64Data = audioAttachment.url.split(',')[1];
-        const format = audioAttachment.contentType?.split('/')[1] || 'wav';
-        playAudio(base64Data, format);
-        
-        // Reset voice mode after playing
-        setIsVoiceMode(false);
-      }
+    
+    console.log('Checking for audio - Last message:', lastMessage);
+    
+    // If we have a new assistant message, generate audio for it
+    if (lastMessage?.role === "assistant" && lastMessage.content) {
+      const generateAudio = async () => {
+        try {
+          console.log('Generating audio for message:', lastMessage.content);
+          
+          // Call TTS API
+          const response = await fetch('/api/tts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: lastMessage.content,
+              voice: 'alloy',  // Use 'nova' for patient portal
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error('TTS failed');
+          }
+          
+          const data = await response.json();
+          console.log('Received TTS audio');
+          
+          // Extract base64 and play
+          const base64Data = data.audio.split(',')[1];
+          await playAudio(base64Data, 'wav');
+          
+          // Reset voice mode after playing
+          setIsVoiceMode(false);
+        } catch (error) {
+          console.error('Error generating audio:', error);
+          toast.error('Failed to generate audio response');
+          setIsVoiceMode(false);
+        }
+      };
+      
+      generateAudio();
     }
   }, [messages, playAudio, isVoiceMode, setIsVoiceMode]);
 
