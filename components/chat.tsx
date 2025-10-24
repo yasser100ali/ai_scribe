@@ -18,8 +18,6 @@ import patientRecordsData from "@/patient_records.json";
 export function Chat() {
   const chatId = "001";
 
-  const [pendingAudio, setPendingAudio] = React.useState<string | null>(null);
-
   const {
     messages,
     setMessages,
@@ -31,46 +29,11 @@ export function Chat() {
     stop,
   } = useChat({
     maxSteps: 4,
-    streamProtocol: 'data',
     onError: (error) => {
       if (error.message.includes("Too many requests")) {
         toast.error(
           "You are sending too many messages. Please try again later.",
         );
-      }
-    },
-    experimental_onToolCall: async (toolCall) => {
-      console.log('Tool call:', toolCall);
-    },
-    experimental_streamData: true,
-    onFinish: (message, options) => {
-      console.log('=== onFinish called ===');
-      console.log('Message:', message);
-      console.log('Message.experimental_attachments:', message?.experimental_attachments);
-      console.log('Message.annotations:', (message as any)?.annotations);
-      console.log('Options:', options);
-      
-      // Check for pending audio to attach
-      if (pendingAudio && message?.role === 'assistant') {
-        console.log('Attaching pending audio to message');
-        setMessages((prevMessages) => {
-          const lastMsg = prevMessages[prevMessages.length - 1];
-          if (lastMsg && lastMsg.id === message.id) {
-            return [
-              ...prevMessages.slice(0, -1),
-              {
-                ...lastMsg,
-                experimental_attachments: [{
-                  contentType: 'audio/wav',
-                  url: pendingAudio,
-                  name: 'response.wav',
-                }],
-              },
-            ];
-          }
-          return prevMessages;
-        });
-        setPendingAudio(null);
       }
     },
   });

@@ -23,24 +23,11 @@ export default function PatientChatPage() {
   } = useChat({
     api: "/api/patient-chat",
     maxSteps: 4,
-    streamProtocol: 'data',  // Explicitly set protocol
     onError: (error) => {
       if (error.message.includes("Too many requests")) {
         toast.error(
           "You are sending too many messages. Please try again later.",
         );
-      }
-    },
-    onFinish: (message, options) => {
-      console.log('=== [Patient] onFinish called ===');
-      console.log('Message:', message);
-      console.log('Message.experimental_attachments:', message?.experimental_attachments);
-      console.log('Options:', options);
-      console.log('Options keys:', Object.keys(options || {}));
-      
-      // Check if message already has attachments (SDK should parse them automatically)
-      if (message?.experimental_attachments && message.experimental_attachments.length > 0) {
-        console.log('[Patient] Message already has attachments from SDK:', message.experimental_attachments);
       }
     },
   });
