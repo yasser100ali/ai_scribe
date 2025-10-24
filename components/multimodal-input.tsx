@@ -87,6 +87,7 @@ export function MultimodalInput({
   const { width } = useWindowSize();
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const processingRef = useRef(false);
+  const lastPlayedMessageIdRef = useRef<string | null>(null);
   const { 
     isRecording, 
     isPlaying, 
@@ -94,6 +95,7 @@ export function MultimodalInput({
     startRecording, 
     stopRecording, 
     playAudio, 
+    stopAudio,
     clearRecording 
   } = useVoiceRecording();
 
@@ -150,12 +152,16 @@ export function MultimodalInput({
       // Stop recording and send audio
       await stopRecording();
     } else {
+      // Stop any currently playing audio before starting new recording
+      if (isPlaying) {
+        stopAudio();
+      }
       // Start recording
       processingRef.current = false; // Reset processing flag
-      setIsVoiceMode(true);
+      // Don't set isVoiceMode here - wait until we send the transcription
       await startRecording();
     }
-  }, [isRecording, startRecording, stopRecording]);
+  }, [isRecording, isPlaying, startRecording, stopRecording, stopAudio]);
 
   // Handle audio blob when recording stops - transcribe it first
   useEffect(() => {
@@ -184,6 +190,8 @@ export function MultimodalInput({
           // Send transcribed text as a regular message with voice mode marker
           if (transcribedText) {
             setInput(transcribedText);
+            // Set voice mode to true NOW (after recording is done, before sending)
+            setIsVoiceMode(true);
             await append({
               role: "user",
               content: `[VOICE_MODE]${transcribedText}`,
@@ -192,7 +200,6 @@ export function MultimodalInput({
 
           clearRecording();
           processingRef.current = false;
-          // Don't set isVoiceMode to false yet - wait for response
         } catch (error) {
           console.error('Error transcribing audio:', error);
           toast.error('Failed to transcribe audio. Please try again.');
@@ -209,16 +216,28 @@ export function MultimodalInput({
   // Play audio responses from AI (only if voice mode was used)
   useEffect(() => {
     if (!isVoiceMode) return; // Only play audio if user used voice input
+    if (isLoading) return; // Wait until streaming is complete
+    if (isRecording) return; // NEVER play audio while recording
     
     const lastMessage = messages[messages.length - 1];
     
+    console.log('Checking for audio - isLoading:', isLoading);
+    console.log('Checking for audio - isRecording:', isRecording);
     console.log('Checking for audio - Last message:', lastMessage);
+    console.log('Last played message ID:', lastPlayedMessageIdRef.current);
     
-    // If we have a new assistant message, generate audio for it
-    if (lastMessage?.role === "assistant" && lastMessage.content) {
+    // If we have a new assistant message that hasn't been played yet, generate audio for it
+    // Only play when streaming is complete (isLoading is false)
+    if (lastMessage?.role === "assistant" && 
+        lastMessage.content && 
+        lastMessage.id !== lastPlayedMessageIdRef.current) {
+      
       const generateAudio = async () => {
         try {
           console.log('Generating audio for message:', lastMessage.content);
+          
+          // Mark this message as being played
+          lastPlayedMessageIdRef.current = lastMessage.id;
           
           // Call TTS API
           const response = await fetch('/api/tts', {
@@ -254,7 +273,7 @@ export function MultimodalInput({
       
       generateAudio();
     }
-  }, [messages, playAudio, isVoiceMode, setIsVoiceMode]);
+  }, [messages, playAudio, isVoiceMode, setIsVoiceMode, isLoading, isRecording]);
 
   const actions = suggestedActions || defaultSuggestedActions;
 
