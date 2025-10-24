@@ -1,6 +1,5 @@
 # Voice Feature Documentation
 
-## Overview
 
 Voice capabilities have been added to both the **Provider Portal** and **Patient Portal**, allowing users to speak to the AI and receive spoken responses back.
 
