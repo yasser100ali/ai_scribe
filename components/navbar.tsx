@@ -73,11 +73,11 @@ export const Navbar = () => {
                 size="sm"
                 className="border border-border hover:border-primary/50 hover:bg-accent hover:text-primary transition-all font-medium"
               >
-                About & Why Hire Me
+                About & Project Updates!
               </Button>
             </a>
             <a 
-              href="https://github.com/yasser100ali/deepscribe-project" 
+              href="https://github.com/yasser100ali/ai_scribe" 
               target="_blank" 
               rel="noopener noreferrer"
               className="no-underline"

@@ -20,9 +20,9 @@ export default function AboutPage() {
       icon: "⚡"
     },
     {
-      title: "Healthcare Alerts",
-      description: "When potential serious symptoms are detected, the AI alerts healthcare providers in real-time, enabling them to provide timely and appropriate care.",
-      icon: "🔔"
+      title: "RAG For Patient Records",
+      description: "Patient records are stored in a vector store embedding so that the agent could retreive info from the entire patient database at once. It also utilizes a tool to get all information for specific patients, allowing both in depth and broad research.",
+      icon: "🧠"
     }
   ];
 
@@ -52,6 +52,28 @@ export default function AboutPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="max-w-3xl mx-auto"
           >
+            {/* Project Updates Section - Featured */}
+            <section className="mb-16 p-8 rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm shadow-lg shadow-white/10">
+              <motion.h2 
+                className="text-2xl md:text-3xl font-bold mb-6 text-white"
+                animate={{ opacity: [0.8, 1, 0.8] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                Project Updates
+              </motion.h2>
+              <div className="space-y-6 text-muted-foreground">
+                <p>
+                  The scope of the assignment project was meant to test how quickly I could move within a short period of time. This is crucial for a startup, and more crucial is building fast while taking projects further.
+                </p>
+                <ul className="space-y-3 ml-4">
+                  <li className="flex gap-3">
+                    <span className="text-white/50 font-semibold">•</span>
+                    <span><span className="text-white font-semibold">Voice Input & Output (10/23):</span> Added complete voice capabilities to both provider and patient portals using OpenAI Whisper for transcription and TTS models for natural speech responses, allowing users to speak to the AI and receive audio replies. For now this feature is available only on Google Chrome.</span>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
             <section className="mb-16">
               <h2 className="text-2xl md:text-3xl font-bold mb-6 text-white">
                 How this project works
@@ -92,36 +114,6 @@ export default function AboutPage() {
                     </p>
                   </motion.div>
                 ))}
-              </div>
-            </section>
-
-            {/* Impact Section */}
-            <section className="mb-16">
-              <h2 className="text-2xl md:text-3xl font-bold mb-6 text-white">
-                The Project Advantage
-              </h2>
-              <div className="space-y-6 text-muted-foreground">
-                <p>
-                  Medical professionals face the constant challenge of managing vast amounts of patient information while maintaining diagnostic accuracy. This project addresses this by leveraging advanced AI to:
-                </p>
-                <ul className="space-y-3 ml-4">
-                  <li className="flex gap-3">
-                    <span className="text-white/50 font-semibold">•</span>
-                    <span><span className="text-white font-semibold">Identify Red Flags:</span> Detect subtle symptom patterns that may indicate serious underlying conditions</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-white/50 font-semibold">•</span>
-                    <span><span className="text-white font-semibold">Fill Information Gaps:</span> Find missing data points that could impact clinical decisions</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-white/50 font-semibold">•</span>
-                    <span><span className="text-white font-semibold">Enable Proactive Care:</span> Alert healthcare providers before conditions escalate, enabling preventive interventions</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-white/50 font-semibold">•</span>
-                    <span><span className="text-white font-semibold">Enhance Patient Engagement:</span> Encourage patients to articulate symptoms thoroughly, improving data quality for clinical assessment</span>
-                  </li>
-                </ul>
               </div>
             </section>
 
