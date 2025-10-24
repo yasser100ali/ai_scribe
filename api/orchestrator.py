@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 from typing import List, Dict, Any
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -191,7 +192,7 @@ def _build_audio_attachment(audio_obj: Any, default_format: str = "wav") -> Dict
 
 def stream_text_with_audio(messages: List[dict], protocol: str = "data"):
     """
-    Handle audio output using Chat Completions API with audio modalities.
+    Handle audio output using the new OpenAI TTS API.
     
     Args:
         messages: List of conversation messages (text only, already transcribed)
@@ -216,42 +217,51 @@ def stream_text_with_audio(messages: List[dict], protocol: str = "data"):
                 "content": content
             })
     
+    # Add system message for proper context
+    chat_messages_with_system = [
+        {"role": "system", "content": SYSTEM_PROMPT}
+    ] + chat_messages
+    
     try:
-        # Use Chat Completions API with audio modalities
-        response = client.chat.completions.create(
-            model="gpt-4o-audio-preview",
-            modalities=["text", "audio"],
-            audio={"voice": "alloy", "format": "wav"},
-            messages=chat_messages,
-            stream=False  # Audio doesn't support streaming yet
+        # First, get the text response using regular chat completions
+        text_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=chat_messages_with_system,
+            stream=False
         )
         
         # Extract text response
-        if response.choices and response.choices[0].message.content is not None:
-            text_content = _flatten_message_content(response.choices[0].message.content)
+        text_content = ""
+        if text_response.choices and text_response.choices[0].message.content is not None:
+            text_content = _flatten_message_content(text_response.choices[0].message.content)
             if text_content:
                 yield f'0:{json.dumps(text_content)}\n'
-
-        # Extract audio response if available
-        if (response.choices and 
-            hasattr(response.choices[0].message, 'audio') and 
-            response.choices[0].message.audio):
-            attachment_data = _build_audio_attachment(response.choices[0].message.audio)
-            if attachment_data:
-                yield f'8:{json.dumps(attachment_data)}\n'
-        else:
-            # Fallback if audio stored differently (dicts instead of attrs)
-            choice_message = response.choices[0].message
-            audio_obj = None
-            if isinstance(choice_message, dict):
-                audio_obj = choice_message.get("audio")
-            if audio_obj:
-                attachment_data = _build_audio_attachment(audio_obj)
-                if attachment_data:
-                    yield f'8:{json.dumps(attachment_data)}\n'
+        
+        # Now generate audio from the text response using the new TTS API
+        if text_content:
+            audio_response = client.audio.speech.create(
+                model="gpt-4o-mini-tts",
+                voice="alloy",
+                input=text_content,
+                instructions="Speak in a professional and clear tone suitable for healthcare providers.",
+                response_format="wav"
+            )
+            
+            # Convert audio response to base64
+            audio_bytes = audio_response.content
+            audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+            
+            # Create audio attachment
+            attachment_data = {
+                "type": "audio",
+                "contentType": "audio/wav",
+                "url": f"data:audio/wav;base64,{audio_base64}",
+                "name": "assistant-response.wav",
+            }
+            yield f'8:{json.dumps(attachment_data)}\n'
         
         # Send completion metadata
-        usage = response.usage if hasattr(response, 'usage') else None
+        usage = text_response.usage if hasattr(text_response, 'usage') else None
         prompt_tokens = usage.prompt_tokens if usage else None
         completion_tokens = usage.completion_tokens if usage else None
         
@@ -264,6 +274,8 @@ def stream_text_with_audio(messages: List[dict], protocol: str = "data"):
         
     except Exception as e:
         print(f"Error in audio processing: {e}")
+        import traceback
+        traceback.print_exc()
         error_payload = {"finishReason": "error", "message": str(e)}
         yield f'e:{json.dumps(error_payload)}\n'
 
