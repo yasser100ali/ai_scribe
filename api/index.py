@@ -4,6 +4,7 @@ from fastapi import FastAPI, Query, UploadFile, File
 from fastapi.responses import StreamingResponse, JSONResponse
 from openai import OpenAI
 import os
+import base64
 
 from .utils.prompt import ClientMessage
 from .orchestrator import stream_text
@@ -71,6 +72,42 @@ async def transcribe_audio(file: UploadFile = File(...)):
         
         return JSONResponse(content={"text": transcript.text})
     except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: str = "alloy"
+
+@app.post("/api/tts")
+async def text_to_speech(request: TTSRequest):
+    """Generate audio from text using OpenAI TTS"""
+    try:
+        print(f"[TTS] Generating audio for: {request.text[:100]}...")
+        
+        audio_response = client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice=request.voice,
+            input=request.text,
+            instructions=f"Speak in a {'warm and empathetic' if request.voice == 'nova' else 'professional and clear'} tone.",
+            response_format="wav"
+        )
+        
+        # Convert to base64
+        audio_bytes = audio_response.content
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+        
+        print(f"[TTS] Generated {len(audio_bytes)} bytes of audio")
+        
+        return JSONResponse(content={
+            "audio": f"data:audio/wav;base64,{audio_base64}",
+            "contentType": "audio/wav"
+        })
+        
+    except Exception as e:
+        print(f"[TTS] Error: {e}")
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}

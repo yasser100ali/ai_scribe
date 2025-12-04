@@ -1,6 +1,5 @@
 # Voice Feature Documentation
 
-## Overview
 
 Voice capabilities have been added to both the **Provider Portal** and **Patient Portal**, allowing users to speak to the AI and receive spoken responses back.
 
@@ -43,14 +42,14 @@ Voice capabilities have been added to both the **Provider Portal** and **Patient
 
 2. **Provider Portal** (`api/orchestrator.py`)
    - `stream_text_with_audio()`: Handles audio for provider conversations
-   - Uses OpenAI's `gpt-4o-audio-preview` model
+   - Uses OpenAI's `gpt-4o-mini` for text generation and `gpt-4o-mini-tts` for speech
    - Voice: "alloy" (professional, clear voice)
    - Converts audio attachments to base64 for OpenAI API
    - Returns both text transcription and audio response
 
 3. **Patient Portal** (`api/patient_orchestrator.py`)
    - `stream_patient_text_with_audio()`: Handles audio for patient conversations
-   - Uses OpenAI's `gpt-4o-audio-preview` model
+   - Uses OpenAI's `gpt-4o-mini` for text generation and `gpt-4o-mini-tts` for speech
    - Voice: "nova" (warm, empathetic voice - better for patients)
    - Same audio processing pipeline as provider portal
 
@@ -115,15 +114,23 @@ audio={"voice": "nova", "format": "wav"}
 
 ### API Integration
 
-The voice feature uses OpenAI's Chat Completions API with audio modalities:
+The voice feature uses OpenAI's dedicated Text-to-Speech API:
 
 ```python
-response = client.chat.completions.create(
-    model="gpt-4o-audio-preview",
-    modalities=["text", "audio"],
-    audio={"voice": "alloy", "format": "wav"},
-    messages=chat_messages,
+# Step 1: Get text response from chat model
+text_response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=chat_messages_with_system,
     stream=False
+)
+
+# Step 2: Generate audio from text using TTS
+audio_response = client.audio.speech.create(
+    model="gpt-4o-mini-tts",
+    voice="alloy",
+    input=text_content,
+    instructions="Speak in a professional and clear tone suitable for healthcare providers.",
+    response_format="wav"
 )
 ```
 
@@ -214,6 +221,15 @@ For pricing details, visit: https://openai.com/api/pricing/
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: October 23, 2025
+**Version**: 1.1  
+**Last Updated**: October 24, 2025
+
+## Changelog
+
+### v1.1 (October 24, 2025)
+- **BREAKING**: Updated to use new OpenAI Text-to-Speech API (`gpt-4o-mini-tts`)
+- Replaced deprecated `gpt-4o-audio-preview` with current API
+- Now uses two-step process: text generation + audio synthesis
+- Improved error handling and logging for audio generation
+- Added system prompt context to audio responses
 
