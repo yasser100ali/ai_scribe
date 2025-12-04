@@ -14,6 +14,7 @@ import { PatientsPanel } from "@/components/patients-panel";
 import { PatientDetail } from "@/components/patient-detail";
 import { PatientRecord } from "@/types/patient";
 import patientRecordsData from "@/patient_records.json";
+import { useProviderLayout } from "@/components/provider-layout";
 
 export function Chat() {
   const chatId = "001";
@@ -70,9 +71,17 @@ export function Chat() {
     []
   );
 
-  const handleViewPatients = () => {
+  const handleViewPatients = React.useCallback(() => {
     openPanel("patientsList");
-  };
+  }, [openPanel]);
+
+  // Register the callback with the provider layout context
+  const { setOnViewPatients } = useProviderLayout();
+  React.useEffect(() => {
+    if (setOnViewPatients) {
+      setOnViewPatients(handleViewPatients);
+    }
+  }, [setOnViewPatients, handleViewPatients]);
 
   const handleSelectPatient = (patientId: string, record: PatientRecord) => {
     setSelectedPatientId(patientId);
@@ -118,52 +127,6 @@ export function Chat() {
         }}
       >
         <div className="flex flex-col min-w-0 h-full bg-background">
-          {/* Sticky header that appears after first message */}
-          {hasMessages && (
-            <motion.div
-              initial={{ y: -100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{
-                duration: 0.6,
-                ease: [0.25, 0.46, 0.45, 0.94],
-              }}
-              className="flex-shrink-0 border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
-            >
-              <div className="px-4 py-4">
-                <div className="flex flex-col gap-3 max-w-4xl mx-auto">
-                  <motion.div
-                    className="flex flex-col gap-0.5"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3, duration: 0.3 }}
-                  >
-                    <p className="text-white font-medium text-base sm:text-lg leading-tight tracking-tight">
-                      DeepScribe Assistant
-                    </p>
-                    <p className="text-muted-foreground font-normal text-xs sm:text-sm tracking-tight">
-                      AI Medical Scribe
-                    </p>
-                  </motion.div>
-                  <motion.div
-                    className="grid grid-cols-1 gap-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4, duration: 0.3 }}
-                  >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full h-auto px-3 py-2.5 text-xs sm:text-sm font-semibold whitespace-normal leading-snug"
-                      onClick={handleViewPatients}
-                    >
-                      View Patient Records
-                    </Button>
-                  </motion.div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           <div
             ref={messagesContainerRef}
             className="flex flex-col flex-1 overflow-y-scroll pt-4"

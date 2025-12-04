@@ -1,6 +1,6 @@
-# Healthcare AI Chat - DeepScribe Project
+# Healthcare AI Chat
 
-An AI-powered healthcare documentation system built for DeepScribe, featuring a dual-interface design that serves both medical professionals and patients.
+An AI-powered healthcare documentation system, featuring a dual-interface design that serves both medical professionals and patients.
 
 ## 🚀 Features
 

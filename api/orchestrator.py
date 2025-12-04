@@ -57,7 +57,7 @@ tools = [
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The search query to find relevant patient records (e.g., 'Tell me about Emily')."
+                    "description": "The search query to find relevant patient records when query is relatively broad (e.g., 'Find patients between age 30-40' or 'find patients with depression')."
                 }
             },
             "required": ["query"]
@@ -66,7 +66,7 @@ tools = [
 ]
 
 SYSTEM_PROMPT = """
-You are DeepScribe Assistant, an AI medical scribe designed to help healthcare providers
+You are Mecical AI Assistant, designed to help healthcare providers
 capture, organize, and summarize clinical encounters accurately and empathetically.
 
 By default if the user asks a vague prompt like "what do you" or something along those lines or "help me get started", 

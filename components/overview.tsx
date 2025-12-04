@@ -69,7 +69,7 @@ export const Overview = ({ onViewPatients }: { onViewPatients?: () => void }) =>
             }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           >
-            DeepScribe
+            AI Medical
           </motion.h1>
           
           <p className="text-sm font-mono text-muted-foreground uppercase tracking-wider">
@@ -100,7 +100,7 @@ export const Overview = ({ onViewPatients }: { onViewPatients?: () => void }) =>
               onClick={onViewPatients}
               className="px-6 py-2"
             >
-              View Patient Records
+              View patient records
             </Button>
           )}
         </motion.div>
