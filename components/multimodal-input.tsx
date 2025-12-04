@@ -369,25 +369,6 @@ export function MultimodalInput({
 
         {/* Button group */}
         <div className="absolute bottom-3 right-3 flex items-center gap-2">
-          {/* Microphone button */}
-          {!isLoading && (
-            <Button
-              className={cn(
-                "rounded-full p-2 h-fit shadow-md transition-all",
-                isRecording 
-                  ? "bg-red-500 hover:bg-red-600 text-white animate-pulse" 
-                  : "bg-secondary hover:bg-secondary/80 text-secondary-foreground"
-              )}
-              onClick={(event) => {
-                event.preventDefault();
-                handleVoiceToggle();
-              }}
-              title={isRecording ? "Stop recording" : "Start voice recording"}
-            >
-              <MicrophoneIcon size={16} />
-            </Button>
-          )}
-
           {/* Send / Stop button */}
           {isLoading ? (
             <Button
